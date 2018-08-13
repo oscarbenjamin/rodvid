@@ -4,6 +4,7 @@ import os, os.path
 import itertools
 import sys
 import argparse
+import time
 
 import cv2
 
@@ -34,20 +35,56 @@ class FramesFromImages(object):
 
 
 def show_frames(name, frames):
-    def trackbar_handler(name):
-        def handle_trackbar(frameno):
-            if frameno == 0:
-                frameno = 1
-            cv2.imshow(name, frames[frameno-1])
-        return handle_trackbar
+
+    def show_frame(frameno):
+        nonlocal current_frame
+        current_frame = frameno
+        index = max(frameno - 1, 0)
+        cv2.imshow(name, frames[index])
+        cv2.setTrackbarPos('Frame #', name, frameno)
+
+    def start_playing():
+        nonlocal playing, time_started
+        playing = True
+        time_started = time.time() - current_frame / fps
+
+    def stop_playing():
+        nonlocal playing, time_started
+        playing = False
+        time_started = None
+
+    def handle_trackbar(frameno):
+        if not playing:
+            show_frame(frameno)
+
+    def mouse_handler(event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            if playing:
+                stop_playing()
+            else:
+                start_playing()
 
     cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-    cv2.createTrackbar('Frame #', name, 1, len(frames), trackbar_handler(name))
-    cv2.imshow(name, frames[0])
+    cv2.createTrackbar('Frame #', name, 1, len(frames), handle_trackbar)
+    cv2.setMouseCallback(name, mouse_handler)
+
+    current_frame = 1
+    time_started = None
+    playing = False
+    fps = 25
+
+    start_playing()
+
     while 1:
-        k = cv2.waitKey(0) & 0xff
+        k = cv2.waitKey(1) & 0xff
         if k == 27:
             break
+        if playing:
+            new_time = time.time()
+            expected_frame = int(fps * (new_time - time_started))
+            if expected_frame != current_frame:
+                show_frame(expected_frame)
+
     cv2.destroyAllWindows()
 
 def main(args):
