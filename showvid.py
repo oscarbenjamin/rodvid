@@ -75,7 +75,7 @@ if __name__ == "__main__":
     #
     # Run as something like:
     #
-    #   $ ./showvid.py folder/vidname%3d.jpg 7
+    #   $ ./showvid.py folder/vidname%03d.jpg 7
     #
     # This will show frames:
     #
