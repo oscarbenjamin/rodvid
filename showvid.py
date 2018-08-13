@@ -34,58 +34,115 @@ class FramesFromImages(object):
         return len(self.filenames)
 
 
-def show_frames(name, frames):
+class FrameShower(object):
 
-    def show_frame(frameno):
-        nonlocal current_frame
-        current_frame = frameno
-        index = max(frameno - 1, 0)
-        cv2.imshow(name, frames[index])
-        cv2.setTrackbarPos('Frame #', name, frameno)
+    TRACKBAR = 'Frame (#)'
 
-    def start_playing():
-        nonlocal playing, time_started
-        playing = True
-        time_started = time.time() - current_frame / fps
+    def __init__(self, name, frames):
+        self.name = name
+        self.frames = frames
+        self._setting_trackbar = False
+        self.current_frame = 1
+        self.speed = 10
 
-    def stop_playing():
-        nonlocal playing, time_started
-        playing = False
-        time_started = None
+    def show(self):
+        cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
+        cv2.imshow(self.name, self.frames[0])
+        cv2.createTrackbar(self.TRACKBAR, self.name, 1, len(self.frames),
+                self.handle_trackbar)
+        cv2.createTrackbar('Speed (10^(x/10))', self.name, 10, 100,
+                self.handle_speedbar)
+        cv2.setMouseCallback(self.name, self.handle_mouse)
 
-    def handle_trackbar(frameno):
-        if not playing:
-            show_frame(frameno)
+        self.controller = PlayController(self)
+        self.event_loop()
 
-    def mouse_handler(event, x, y, flags, param):
-        if event == cv2.EVENT_LBUTTONDOWN:
-            if playing:
-                stop_playing()
+        cv2.destroyAllWindows()
+
+    def event_loop(self):
+        while 1:
+            k = cv2.waitKey(1) & 0xff
+            if k == 27:
+                return
             else:
-                start_playing()
+                self.controller.tick()
 
-    cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-    cv2.createTrackbar('Frame #', name, 1, len(frames), handle_trackbar)
-    cv2.setMouseCallback(name, mouse_handler)
+    def show_frame(self, frameno):
+        self.set_trackbar(frameno)
+        index = max(frameno-1, 0)
+        cv2.imshow(self.name, self.frames[index])
+        self.current_frame = frameno
 
-    current_frame = 1
-    time_started = None
-    playing = False
-    fps = 25
+    def handle_mouse(self, event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            self.controller.handle_leftclick(x, y)
 
-    start_playing()
+    def set_trackbar(self, frameno):
+        self._setting_trackbar = True
+        cv2.setTrackbarPos(self.TRACKBAR, self.name, frameno)
+        self._setting_trackbar = False
 
-    while 1:
-        k = cv2.waitKey(1) & 0xff
-        if k == 27:
-            break
-        if playing:
-            new_time = time.time()
-            expected_frame = int(fps * (new_time - time_started))
-            if expected_frame != current_frame:
-                show_frame(expected_frame)
+    def handle_trackbar(self, frameno):
+        if self._setting_trackbar:
+            return
+        self.controller.handle_trackbar(frameno)
 
-    cv2.destroyAllWindows()
+    def handle_speedbar(self, speed):
+        self.speed = speed
+        self.controller.set_speed(speed)
+
+
+class PlayController(object):
+
+    def __init__(self, shower):
+        self.shower = shower
+        self.fps = 25
+        self.restart()
+
+    def handle_trackbar(self, frameno):
+        self.shower.show_frame(frameno)
+        self.restart()
+
+    def set_speed(self, speed):
+        self.restart()
+
+    def pause(self):
+        self.shower.controller = PauseController(self.shower)
+
+    def handle_leftclick(self, x, y):
+        self.pause()
+
+    def restart(self):
+        self.start_frame = self.shower.current_frame
+        self.start_time = time.time()
+
+    def tick(self):
+        frames_shown = int(self.fps * (time.time() - self.start_time))
+        expected_frame = self.start_frame + self.shower.speed * frames_shown
+        if expected_frame != self.shower.current_frame:
+            if expected_frame >= len(self.shower.frames):
+                self.pause()
+                return
+            self.shower.show_frame(expected_frame)
+
+
+class PauseController(object):
+
+    def __init__(self, shower):
+        self.shower = shower
+
+    def handle_trackbar(self, frameno):
+        self.shower.show_frame(frameno)
+
+    def handle_leftclick(self, x, y):
+        self.shower.controller = PlayController(self.shower)
+
+    def tick(self): pass
+
+    def set_speed(self, speed): pass
+
+def show_frames(name, frames):
+    FrameShower(name, frames).show()
 
 def main(args):
     parser = argparse.ArgumentParser()
