@@ -13,7 +13,8 @@ class FramesFromImages(object):
         self.filenames = self.get_filenames(pattern, startindex)
         self.cv2readflag = cv2readflag
         if not self.filenames:
-            raise ValueError('No such file: %r' % (filename,))
+            filename = pattern % (startindex,)
+            raise ValueError('No such file: %r' % filename)
 
     def get_filenames(self, pattern, startindex):
         '''Check filesystem for filenames matching pattern'''
