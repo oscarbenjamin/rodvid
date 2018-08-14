@@ -26,6 +26,7 @@ class FrameShower(object):
         cv2.setMouseCallback(self.name, self.handle_mouse)
 
         self.controller = controller
+        self.show_frame(self.current_frame)
         self.event_loop()
 
         cv2.destroyAllWindows()
@@ -41,8 +42,8 @@ class FrameShower(object):
     def show_frame(self, frameno):
         self.set_trackbar(frameno)
         index = max(frameno-1, 0)
-        cv2.imshow(self.name, self.frames[index])
         self.current_frame = frameno
+        self.controller.draw_frame(self.frames[index])
 
     def handle_mouse(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -73,6 +74,9 @@ class BaseController(object):
 
     def handle_trackbar(self, frameno):
         self.shower.show_frame(frameno)
+
+    def draw_frame(self, frame):
+        cv2.imshow(self.shower.name, frame)
 
     def handle_leftclick(self, x, y): pass
     def handle_leftup(self, x, y): pass
