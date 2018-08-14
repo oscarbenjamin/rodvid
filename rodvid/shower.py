@@ -47,6 +47,10 @@ class FrameShower(object):
     def handle_mouse(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
             self.controller.handle_leftclick(x, y)
+        elif event == cv2.EVENT_LBUTTONUP:
+            self.controller.handle_leftup(x, y)
+        elif event == cv2.EVENT_MOUSEMOVE:
+            self.controller.handle_mousemove(x, y)
 
     def set_trackbar(self, frameno):
         self._setting_trackbar = True
@@ -62,7 +66,7 @@ class FrameShower(object):
         self.speed = speed
         self.controller.set_speed(speed)
 
-class ShowController(object):
+class BaseController(object):
 
     def __init__(self, shower):
         self.shower = shower
@@ -71,15 +75,15 @@ class ShowController(object):
         self.shower.show_frame(frameno)
 
     def handle_leftclick(self, x, y): pass
-
+    def handle_leftup(self, x, y): pass
+    def handle_mousemove(self, x, y): pass
     def tick(self): pass
-
     def set_speed(self, speed): pass
 
 
 def show_frames(name, frames):
     shower = FrameShower(name, frames)
-    controller = ShowController(shower)
+    controller = BaseController(shower)
     shower.show(controller)
 
 

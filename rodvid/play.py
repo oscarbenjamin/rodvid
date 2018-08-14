@@ -4,12 +4,12 @@ import time
 import cv2
 
 from .frames import frames_from_argv
-from .shower import FrameShower
+from .shower import FrameShower, BaseController
 
-class PlayController(object):
+class PlayController(BaseController):
 
     def __init__(self, shower):
-        self.shower = shower
+        super().__init__(shower)
         self.fps = 25
         self.restart()
 
@@ -40,20 +40,9 @@ class PlayController(object):
             self.shower.show_frame(expected_frame)
 
 
-class PauseController(object):
-
-    def __init__(self, shower):
-        self.shower = shower
-
-    def handle_trackbar(self, frameno):
-        self.shower.show_frame(frameno)
-
+class PauseController(BaseController):
     def handle_leftclick(self, x, y):
         self.shower.controller = PlayController(self.shower)
-
-    def tick(self): pass
-
-    def set_speed(self, speed): pass
 
 
 def play_frames(name, frames):
