@@ -35,10 +35,24 @@ class FramesFromImages(object):
         return filenames
 
     def __getitem__(self, index):
+        if isinstance(index, slice):
+            return FramesSlice(self, index)
         return cv2.imread(self.filenames[index], self.cv2readflag)
 
     def __len__(self):
         return len(self.filenames)
+
+
+class FramesSlice(object):
+    def __init__(self, frames, frames_slice):
+        self.frames = frames
+        self.indices = range(*frames_slice.indices(len(frames)))
+
+    def __getitem__(self, index):
+        return self.frames[self.indices[index]]
+
+    def __len__(self):
+        return len(self.indices)
 
 
 def get_argument_parser():

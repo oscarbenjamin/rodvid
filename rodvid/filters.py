@@ -35,11 +35,18 @@ class EdgeFilter(Filter):
         self.ksize = ksize
 
 
+def normalise(frame):
+    height, width = frame.shape
+    maxval = frame[height//5:, :].max()
+    frame /= maxval
+    frame[frame > maxval] = 1
+    return frame
+
+
 class LaplacianFilter(EdgeFilter):
     def filter(self, frame):
         frame_filt = cv2.Laplacian(frame, self.dtype, ksize=self.ksize)
-        frame_filt /= frame_filt.max()
-        return frame_filt
+        return normalise(frame_filt)
 
 
 class LaplacianAbsFilter(EdgeFilter):
@@ -59,10 +66,55 @@ class SobelAbsFilter(EdgeFilter):
         return frame_mag
 
 
+class MeanSubtract(Filter):
+
+    def __init__(self, frames, ksize=100):
+        super().__init__(frames)
+        self.mean_frame = self.get_mean_frame(self.frames)
+
+    def get_mean_frame(self, frames):
+        running_mean = None
+        for n, frame in enumerate(frames[::100], 1):
+            frame_f = frame.astype(np.float32)
+            if running_mean is None:
+                dtype = frame.dtype
+                running_mean = frame_f
+            else:
+                running_mean += (frame_f - running_mean) / (n + 1)
+        return running_mean.astype(dtype)
+
+    def filter(self, frame):
+        return cv2.subtract(frame, self.mean_frame)
+
+
+class MeanMask(MeanSubtract):
+    def filter(self, frame):
+        diff = cv2.subtract(frame, self.mean_frame)
+        mask = diff < 10
+        frame[mask] = 0
+        return frame
+
+
+def filter_frames(frames, ksize=5):
+    frames = MeanSubtract(frames)
+    frames = LaplacianFilter(frames, ksize=ksize)
+    return frames
+
+
+def mask_filter(frames, ksize=5):
+    frames = MeanMask(frames)
+    frames = SobelAbsFilter(frames, ksize=ksize)
+    return frames
+
+
 choices = {
     'laplacian': LaplacianFilter,
     'laplacian-abs': LaplacianAbsFilter,
-    'sobel-abs': SobelAbsFilter,
+    'sobel-abs': SobelAbsFilter, # <--- Seems to be the best
+    'mean-sub': MeanSubtract,
+    'mean-mask': MeanMask,
+    'sub-lap': filter_frames,
+    'mask-filter': mask_filter,
 }
 
 
