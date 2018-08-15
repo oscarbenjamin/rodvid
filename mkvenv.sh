@@ -36,5 +36,5 @@ $PY -m venv venv
 . venv/bin/activate
 cd venv  # Leave build dir in here...
 pip install --upgrade pip
-pip install numpy matplotlib jupyter ipython opencv-python
+pip install numpy scipy matplotlib jupyter ipython opencv-python
 pip list | tee requirements.txt
