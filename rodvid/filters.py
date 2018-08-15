@@ -59,8 +59,8 @@ class LaplacianAbsFilter(EdgeFilter):
 
 class SobelAbsFilter(EdgeFilter):
     def filter(self, frame):
-        frame_dx = cv2.Sobel(frame, cv2.CV_64F, 1, 0, ksize=5)
-        frame_dy = cv2.Sobel(frame, cv2.CV_64F, 0, 1, ksize=5)
+        frame_dx = cv2.Sobel(frame, cv2.CV_64F, 1, 0, ksize=self.ksize)
+        frame_dy = cv2.Sobel(frame, cv2.CV_64F, 0, 1, ksize=self.ksize)
         frame_mag = np.abs(frame_dx) + np.abs(frame_dy)
         frame_mag /= frame_mag.max()
         return frame_mag

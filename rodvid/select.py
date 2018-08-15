@@ -96,19 +96,20 @@ class RodShape(object):
                 upper_centre, upper_right)
 
     def generate_points(self, npoints):
-        N = npoints // 4
+        N1 = 3 * npoints // 8
+        N2 = npoints // 8
         ll, lc, lr, ul, uc, ur = self.corners()
         points = []
         for (xstart, ystart), (xend, yend) in [(ll, ul), (lr, ur)]:
-            for n in range(1, N):
-                alpha = n / N
+            for n in range(1, N1):
+                alpha = n / N1
                 x = (1-alpha)*xstart + alpha*xend
                 y = (1-alpha)*ystart + alpha*yend
                 points.append((x, y))
         for centre, angle in ((lc, self.theta + pi/2), (uc, self.theta - pi/2)):
-            for n in range(N+1):
+            for n in range(N2+1):
                 xc, yc = centre
-                theta = angle + n/N * pi
+                theta = angle + n/N2 * pi
                 R = self.scale * self.RADIUS
                 x = xc + R*cos(theta)
                 y = yc + R*sin(theta)
@@ -121,13 +122,15 @@ class RodShape(object):
         for (x1, y1), (x2, y2) in ((ll, lr), (lr, ur), (ur, ul), (ul, ll)):
             p1 = (int(round(x1)), int(round(y1)))
             p2 = (int(round(x2)), int(round(y2)))
-            cv2.line(img, p1, p2, self.GREEN, 2)
+            cv2.line(img, p1, p2, self.GREEN, 1)
         R_pix = int(round(self.scale * self.RADIUS))
         theta_deg = self.theta * 180 / pi
         x1, y1 = uc
-        cv2.ellipse(img, (int(x1), int(y1)), (R_pix, R_pix), theta_deg - 90, 0, 180, self.GREEN, 2)
+        cv2.ellipse(img, (int(x1), int(y1)), (R_pix, R_pix), theta_deg - 90,
+                0, 180, self.GREEN, 1)
         x1, y1 = lc
-        cv2.ellipse(img, (int(x1), int(y1)), (R_pix, R_pix), theta_deg + 90, 0, 180, self.GREEN, 2)
+        cv2.ellipse(img, (int(x1), int(y1)), (R_pix, R_pix), theta_deg + 90,
+                0, 180, self.GREEN, 1)
 
 
 class RodSelectController(DragController):
@@ -136,11 +139,8 @@ class RodSelectController(DragController):
         if self.dragging:
             self.shape = RodShape.from_xypair(self.xstart, self.ystart, self.x, self.y)
             self.shape.draw(frame)
-        if hasattr(self, 'points'):
-            for x, y in self.points:
-                p = (int(round(x)), int(round(y)))
-                cv2.circle(frame, p, 2, (0, 0, 255), -1)
-
+        elif hasattr(self, 'shape'):
+            self.shape.draw(frame)
 
     def handle_leftup(self, x, y):
         super().handle_leftup(x, y)
@@ -155,26 +155,31 @@ def fit_shape(frame, shape):
     def objective(X):
         xc, yc, theta, scale = X
         test_shape = RodShape(xc, yc, theta, scale)
-        test_shape.generate_points(100)
+        test_shape.generate_points(1000)
         points = test_shape.points
         total = 0
         for x, y in points:
             total += interp_pixel(frame, x, y)
-        return total
+        return - total
 
     X0 = shape.xc, shape.yc, shape.theta, shape.scale
 
-    shape = minimize(objective, X0)
+    #ret = minimize(objective, X0, method='powell')
+    ret = minimize(objective, X0, method='Nelder-Mead')
+    if not ret.success:
+        print(ret)
 
-    return shape
+    return RodShape(*ret.x)
 
 def interp_pixel(frame, x, y):
+    if not (0 < x < frame.shape[1]-1 and 0 < y < frame.shape[0]-1):
+        return 0
     x1 = int(x)
     y1 = int(y)
     x2 = x1 + 1
-    y2 = x2 + 1
+    y2 = y1 + 1
     dx = x - x1
-    dy = y - y2
+    dy = y - y1
     pixel = ( frame[y1, x1]*(1-dx)*(1-dy)
             + frame[y2, x1]*dx*(1-dy)
             + frame[y1, x2]*(1-dx)*dy
@@ -185,7 +190,7 @@ def interp_pixel(frame, x, y):
 def main(argv):
     name, frames = frames_from_argv(argv)
 
-    frames = SobelAbsFilter(frames, ksize=5)
+    frames = SobelAbsFilter(frames, ksize=11)
 
     shower = FrameShower(name, frames)
     controller = RodSelectController(shower)
