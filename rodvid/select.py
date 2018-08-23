@@ -168,7 +168,7 @@ def fit_shape(frame, shape):
 
     x = np.arange(frame.shape[1])
     y = np.arange(frame.shape[0])
-    f = RegularGridInterpolator((y, x), frame)
+    f = RegularGridInterpolator((y, x), frame, bounds_error=False, fill_value=0)
 
     def objective(X):
         xc, yc, theta, scale = X
