@@ -71,6 +71,11 @@ class BlurFilter(EdgeFilter):
         frame_blur = cv2.filter2D(frame,-1,kernel)
         return frame_blur
 
+class SharpenFilter(EdgeFilter):
+    def filter(self, frame):
+        frame = frame.astype(np.float32) ** 2
+        return frame / frame[:].mean()
+
 class CompressFilter(EdgeFilter):
     def filter(self, frame):
         frame = np.log(1 + frame.astype(np.float64))
@@ -131,6 +136,11 @@ def blur_sobel(frames, ksize=5):
     frames = BlurFilter(frames, ksize=ksize)
     return frames
 
+def sobel_sharpen(frames, ksize=5):
+    frames = SobelAbsFilter(frames, ksize=5)
+    frames = SharpenFilter(frames, ksize=ksize)
+    return frames
+
 def sobel_compress(frames, ksize=5):
     frames = SobelAbsFilter(frames, ksize)
     frames = BlurFilter(frames, ksize=ksize)
@@ -149,6 +159,8 @@ choices = {
     'mask-filter': mask_filter,
     'compress': CompressFilter,
     'sobel-compress': sobel_compress,
+    'sharpen': SharpenFilter,
+    'sobel-sharpen': sobel_sharpen,
 }
 
 

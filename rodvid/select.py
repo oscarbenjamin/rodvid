@@ -6,10 +6,12 @@ from math import atan2, pi, cos, sin
 
 import cv2
 from scipy.optimize import minimize
+from scipy.interpolate import RegularGridInterpolator
+import numpy as np
 
 from .frames import frames_from_argv
 from .shower import FrameShower, BaseController
-from .filters import SobelAbsFilter, BlurFilter, CompressFilter
+from .filters import SobelAbsFilter, BlurFilter, CompressFilter, SharpenFilter
 
 
 class DragController(BaseController):
@@ -144,7 +146,18 @@ class RodSelectController(DragController):
 
     def handle_leftup(self, x, y):
         super().handle_leftup(x, y)
+        import cProfile, pstats
+
+        profiler = cProfile.Profile()    # create profiler
+        profiler.enable()                # start profiling
+
         self.shape = fit_shape(self.frame, self.shape)
+        profiler.disable()               # end profiling
+
+        pstat_profile = pstats.Stats(profiler, stream=sys.stdout) # create a pstats object from the profile bound to a file stream
+        pstat_profile.sort_stats('cumulative')
+        pstat_profile.print_stats() # print stats to a file
+
         self.shape.generate_points(100)
         self.points = self.shape.points
         self.redraw()
@@ -152,15 +165,18 @@ class RodSelectController(DragController):
 def fit_shape(frame, shape):
     if len(frame.shape) == 3:
         frame = frame[:,:,0]
+
+    x = np.arange(frame.shape[1])
+    y = np.arange(frame.shape[0])
+    f = RegularGridInterpolator((y, x), frame)
+
     def objective(X):
         xc, yc, theta, scale = X
         test_shape = RodShape(xc, yc, theta, scale)
         test_shape.generate_points(1000)
         points = test_shape.points
-        total = 0
-        for x, y in points:
-            total += interp_pixel(frame, x, y)
-        return - total
+        points = np.array([[y, x] for x, y in points])
+        return - sum(f(points))
 
     X0 = shape.xc, shape.yc, shape.theta, shape.scale
 
@@ -191,6 +207,7 @@ def main(argv):
     name, frames = frames_from_argv(argv)
 
     frames = SobelAbsFilter(frames, ksize=5)
+    #frames = SharpenFilter(frames, None)
     #frames = BlurFilter(frames, ksize=5)
     #frames = CompressFilter(frames, None)
 
