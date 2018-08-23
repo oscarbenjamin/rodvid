@@ -65,6 +65,26 @@ class SobelAbsFilter(EdgeFilter):
         frame_mag /= frame_mag.max()
         return frame_mag
 
+class BlurFilter(EdgeFilter):
+    def filter(self, frame):
+        kernel = np.ones((self.ksize, self.ksize), np.float32) / self.ksize**2
+        frame_blur = cv2.filter2D(frame,-1,kernel)
+        return frame_blur
+
+class CompressFilter(EdgeFilter):
+    def filter(self, frame):
+        frame = np.log(1 + frame.astype(np.float64))
+        frame = np.log(1 + frame.astype(np.float64))
+        frame = np.log(1 + frame.astype(np.float64))
+        frame = np.log(1 + frame.astype(np.float64))
+        frame = np.log(1 + frame.astype(np.float64))
+        frame = np.log(1 + frame.astype(np.float64))
+        frame = np.log(1 + frame.astype(np.float64))
+        frame *= (1 / frame[:].max())
+        return frame
+        #frame *= (255 / frame[:].max())
+        #return frame.astype(np.uint8)
+
 
 class MeanSubtract(Filter):
 
@@ -106,15 +126,29 @@ def mask_filter(frames, ksize=5):
     frames = SobelAbsFilter(frames, ksize=ksize)
     return frames
 
+def blur_sobel(frames, ksize=5):
+    frames = SobelAbsFilter(frames, ksize=5)
+    frames = BlurFilter(frames, ksize=ksize)
+    return frames
+
+def sobel_compress(frames, ksize=5):
+    frames = SobelAbsFilter(frames, ksize)
+    frames = BlurFilter(frames, ksize=ksize)
+    frames = CompressFilter(frames, ksize)
+    return frames
 
 choices = {
     'laplacian': LaplacianFilter,
     'laplacian-abs': LaplacianAbsFilter,
     'sobel-abs': SobelAbsFilter, # <--- Seems to be the best
+    'blur': BlurFilter, # <--- Seems to be the best
+    'blur-sobel': blur_sobel, # <--- Seems to be the best
     'mean-sub': MeanSubtract,
     'mean-mask': MeanMask,
     'sub-lap': filter_frames,
     'mask-filter': mask_filter,
+    'compress': CompressFilter,
+    'sobel-compress': sobel_compress,
 }
 
 

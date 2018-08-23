@@ -9,7 +9,7 @@ from scipy.optimize import minimize
 
 from .frames import frames_from_argv
 from .shower import FrameShower, BaseController
-from .filters import SobelAbsFilter
+from .filters import SobelAbsFilter, BlurFilter, CompressFilter
 
 
 class DragController(BaseController):
@@ -164,8 +164,8 @@ def fit_shape(frame, shape):
 
     X0 = shape.xc, shape.yc, shape.theta, shape.scale
 
-    #ret = minimize(objective, X0, method='powell')
-    ret = minimize(objective, X0, method='Nelder-Mead')
+    ret = minimize(objective, X0, method='powell')
+    #ret = minimize(objective, X0, method='Nelder-Mead')
     if not ret.success:
         print(ret)
 
@@ -190,7 +190,9 @@ def interp_pixel(frame, x, y):
 def main(argv):
     name, frames = frames_from_argv(argv)
 
-    frames = SobelAbsFilter(frames, ksize=11)
+    frames = SobelAbsFilter(frames, ksize=5)
+    #frames = BlurFilter(frames, ksize=5)
+    #frames = CompressFilter(frames, None)
 
     shower = FrameShower(name, frames)
     controller = RodSelectController(shower)
