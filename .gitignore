@@ -2,3 +2,4 @@ videos
 venv
 *.swp
 __pycache__
+*.pdf
